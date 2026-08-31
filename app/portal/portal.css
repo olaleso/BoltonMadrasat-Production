@@ -1,0 +1,542 @@
+.real-portal {
+  --green: #075d36;
+  --deep: #043b24;
+  --gold: #c7aa2f;
+  --line: #dfe7e1;
+  min-height: 100vh;
+  background: #f4f7f5;
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  color: #25352c;
+}
+.real-portal > aside {
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: var(--deep);
+  color: white;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+.real-portal > aside header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 6px 16px;
+  border-bottom: 1px solid #ffffff20;
+}
+.real-portal > aside header img {
+  border-radius: 50%;
+}
+.real-portal > aside header span {
+  display: grid;
+  flex: 1;
+}
+.real-portal > aside header b {
+  font-family: Georgia, serif;
+  font-size: 15px;
+}
+.real-portal > aside header small {
+  font-size: 9px;
+  color: #aac4b5;
+}
+.real-portal > aside header button {
+  display: none;
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 3px;
+  padding: 10px;
+  background: #ffffff10;
+  border-radius: 9px;
+}
+.identity i,
+.real-portal main > header section i {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-weight: 900;
+}
+.identity span {
+  display: grid;
+}
+.identity b {
+  font-size: 11px;
+}
+.identity small {
+  font-size: 9px;
+  color: #b9cdc1;
+}
+.real-portal aside nav {
+  display: grid;
+  gap: 3px;
+  overflow: auto;
+}
+.real-portal aside nav button,
+.real-portal aside footer button {
+  border: 0;
+  background: transparent;
+  color: #bbcec2;
+  padding: 10px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-size: 11px;
+}
+.real-portal aside nav button:hover,
+.real-portal aside nav button.active {
+  background: #ffffff15;
+  color: white;
+}
+.real-portal aside nav svg,
+.real-portal aside footer svg {
+  width: 17px;
+}
+.real-portal aside footer {
+  margin-top: auto;
+  display: grid;
+}
+.real-portal aside footer button {
+  border: 1px solid #ffffff22;
+  justify-content: center;
+  color: white;
+}
+.real-portal aside footer small {
+  text-align: center;
+  color: #8ba797;
+  font-size: 8px;
+  margin-top: 12px;
+}
+.real-portal aside footer b {
+  color: #e0c847;
+}
+.real-portal > main > header {
+  height: 70px;
+  background: white;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 25px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.real-portal > main > header > div {
+  display: grid;
+}
+.real-portal > main > header b {
+  font-family: Georgia, serif;
+  color: var(--green);
+  font-size: 17px;
+}
+.real-portal > main > header small {
+  font-size: 9px;
+  color: #7b8a81;
+}
+.real-portal > main > header section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.real-portal > main > header section button,
+.mobile-menu {
+  border: 0;
+  background: none;
+  color: var(--green);
+}
+.real-portal > main > header section svg {
+  width: 18px;
+}
+.real-portal main > article {
+  padding: 26px;
+  max-width: 1450px;
+  margin: auto;
+}
+.mobile-menu {
+  display: none;
+}
+.welcome {
+  background: linear-gradient(115deg, var(--deep), #087247);
+  color: white;
+  border-radius: 14px;
+  padding: 25px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.welcome small {
+  color: #e3cc54;
+  font-weight: 800;
+}
+.welcome h1 {
+  font-family: Georgia, serif;
+  font-size: 27px;
+  margin: 6px 0;
+}
+.welcome p {
+  font-size: 11px;
+  color: #cbe0d3;
+}
+.welcome img {
+  border-radius: 50%;
+  background: #fff;
+}
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 18px 0;
+}
+.metric-grid section {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 17px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.metric-grid i {
+  width: 40px;
+  height: 40px;
+  background: #e3f1e8;
+  color: var(--green);
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+}
+.metric-grid svg {
+  width: 19px;
+}
+.metric-grid span {
+  display: grid;
+}
+.metric-grid b {
+  font-size: 20px;
+  color: var(--green);
+}
+.metric-grid small {
+  font-size: 9px;
+  color: #77877e;
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.portal-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 20px;
+}
+.portal-card h3 {
+  font-family: Georgia, serif;
+  color: var(--green);
+  margin: 0 0 15px;
+}
+.portal-card > p {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid #edf1ee;
+  padding: 9px 0;
+  margin: 0;
+  font-size: 10px;
+}
+.portal-card > p > svg {
+  width: 15px;
+  color: var(--green);
+}
+.records-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.records-head h1 {
+  font-family: Georgia, serif;
+  color: var(--green);
+  font-size: 25px;
+  margin: 0;
+}
+.records-head p {
+  color: #76867d;
+  font-size: 10px;
+  margin: 4px 0;
+}
+.records-head > span {
+  display: flex;
+  gap: 8px;
+}
+.records-head button,
+.modal footer button {
+  border: 1px solid var(--line);
+  background: white;
+  padding: 9px 12px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.records-head svg {
+  width: 14px;
+}
+.primary {
+  background: var(--green) !important;
+  color: white !important;
+  border-color: var(--green) !important;
+}
+.table-wrap {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  overflow: auto;
+}
+.table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+.table-wrap th {
+  text-align: left;
+  background: #f1f6f3;
+  color: #567064;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 8px;
+  padding: 12px 14px;
+}
+.table-wrap td {
+  font-size: 10px;
+  padding: 13px 14px;
+  border-top: 1px solid #edf1ee;
+}
+.row-action{border:1px solid #cbd8d0;background:#fff;color:#075d36;border-radius:6px;padding:6px 8px;font-size:8px;font-weight:800;white-space:nowrap}
+.status {
+  font-style: normal;
+  text-transform: capitalize;
+  background: #eef1ef;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+.status.active,
+.status.present,
+.status.published,
+.status.valid,
+.status.paid {
+  background: #e2f2e7;
+  color: #087243;
+}
+.status.due,
+.status.submitted {
+  background: #fff5d5;
+  color: #806c10;
+}
+.empty {
+  min-height: 300px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: #7b8b82;
+}
+.empty svg {
+  margin: auto;
+  width: 32px;
+}
+.empty b {
+  color: var(--green);
+  margin-top: 10px;
+}
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.report-grid .portal-card > p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.report-grid span {
+  display: grid;
+}
+.report-grid span small {
+  font-size: 7px;
+  color: #77877e;
+}
+.report-grid span b {
+  font-size: 11px;
+}
+.modal {
+  position: fixed;
+  inset: 0;
+  background: #00180f99;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 100;
+}
+.modal form {
+  background: #fff;
+  border-radius: 14px;
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 30px 80px #00180f55;
+}
+.modal header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.modal header small {
+  font-size: 8px;
+  color: var(--gold);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.modal h2 {
+  font-family: Georgia, serif;
+  color: var(--green);
+  margin: 4px 0;
+}
+.modal header button {
+  border: 0;
+  background: none;
+}
+.modal header svg {
+  width: 18px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 22px;
+}
+.form-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #405348;
+}
+.form-grid input {
+  border: 1px solid #ccd8d0;
+  border-radius: 7px;
+  padding: 11px;
+  outline-color: var(--green);
+}
+.modal output {
+  display: block;
+  margin: 0 22px;
+  padding: 10px;
+  background: #fff0ef;
+  color: #9b2018;
+  border-radius: 7px;
+  font-size: 10px;
+}
+.modal footer {
+  padding: 18px 22px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.portal-error {
+  background: #fff0ef;
+  border: 1px solid #efc2bd;
+  color: #9b2018;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+.portal-error button {
+  float: right;
+}
+.portal-loading {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: #075d36;
+}
+.portal-loading svg {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 900px) {
+  .real-portal {
+    grid-template-columns: 1fr;
+  }
+  .real-portal > aside {
+    position: fixed;
+    left: -260px;
+    width: 250px;
+    transition: 0.2s;
+  }
+  .real-portal > aside.open {
+    left: 0;
+    box-shadow: 25px 0 60px #0005;
+  }
+  .real-portal > aside header button,
+  .mobile-menu {
+    display: block;
+  }
+  .real-portal > main > header {
+    padding: 0 16px;
+  }
+  .real-portal main > article {
+    padding: 18px;
+  }
+  .metric-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dashboard-grid,
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .welcome {
+    padding: 20px;
+  }
+  .welcome img {
+    display: none;
+  }
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .records-head {
+    align-items: flex-start;
+  }
+  .records-head > span {
+    flex-direction: column;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .login-panel form {
+    padding: 22px;
+  }
+}
