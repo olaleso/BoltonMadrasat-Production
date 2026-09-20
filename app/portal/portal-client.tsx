@@ -17713,6 +17713,11 @@ function Records({
   ] = useState(false);
 
   const [
+    guardianLinkStudent,
+    setGuardianLinkStudent,
+  ] = useState<Row | null>(null);
+
+  const [
     searchQuery,
     setSearchQuery,
   ] = useState("");
@@ -19352,8 +19357,8 @@ function Records({
                               type="button"
                               className="row-action"
                               onClick={() =>
-                                window.location.assign(
-                                  "/portal/bulk-students?mode=guardian_updates",
+                                setGuardianLinkStudent(
+                                  row,
                                 )
                               }
                             >
@@ -19959,6 +19964,17 @@ function Records({
             </footer>
           </div>
         </div>
+      )}
+
+      {guardianLinkStudent && resource === "students" && user.role === "admin" && (
+        <StudentGuardianForm
+          student={guardianLinkStudent}
+          close={() => setGuardianLinkStudent(null)}
+          saved={() => {
+            setGuardianLinkStudent(null);
+            refresh();
+          }}
+        />
       )}
 
       {manualRegistrationOpen && (
