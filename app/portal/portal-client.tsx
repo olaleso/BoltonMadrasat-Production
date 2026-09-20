@@ -5086,6 +5086,7 @@ function StudentProfile({
   const [error, setError] = useState("");
   const [invoiceModal, setInvoiceModal] = useState(false);
   const [editProfile, setEditProfile] = useState(false);
+  const [guardianModal, setGuardianModal] = useState(false);
   const [profileNotice, setProfileNotice] = useState("");
   const [timeline, setTimeline] = useState<Row[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(true);
@@ -5160,13 +5161,9 @@ function StudentProfile({
           {user.role === "admin" && (
             <button
               type="button"
-              onClick={() =>
-                window.location.assign(
-                  "/portal/bulk-students?mode=guardian_updates",
-                )
-              }
+              onClick={() => setGuardianModal(true)}
             >
-              Guardian update
+              Add guardian details
             </button>
           )}
         </div>
@@ -5242,8 +5239,323 @@ function StudentProfile({
       refresh={() => void loadProfile()}
     />}</section>}
       {editProfile && <StudentProfileForm student={student} admin={user.role === "admin"} close={() => setEditProfile(false)} saved={() => { setEditProfile(false); setProfileNotice("Student profile updated successfully."); loadProfile(); }} />}
+      {guardianModal && user.role === "admin" && (
+        <StudentGuardianForm
+          student={student}
+          close={() => setGuardianModal(false)}
+          saved={() => {
+            setGuardianModal(false);
+            setProfileNotice("Guardian linked successfully.");
+            void loadProfile();
+            void loadTimeline();
+          }}
+        />
+      )}
       {invoiceModal && activeAgreement && <InvoiceForm agreements={[activeAgreement]} close={() => setInvoiceModal(false)} saved={() => { setInvoiceModal(false); loadProfile(); }} />}
     </section>
+  );
+}
+
+function StudentGuardianForm({
+  student,
+  close,
+  saved,
+}: {
+  student: Row;
+  close: () => void;
+  saved: () => void;
+}) {
+  const [mode, setMode] = useState<"new" | "existing">("new");
+  const [guardians, setGuardians] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadGuardians() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch("/api/v1/guardians", {
+          cache: "no-store",
+        });
+
+        const result = (await response.json().catch(() => ({}))) as {
+          data?: Row[];
+          error?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(result.error ?? "Unable to load existing guardians.");
+        }
+
+        if (active) {
+          setGuardians(
+            (result.data ?? []).sort((a, b) =>
+              String(a.full_name ?? "").localeCompare(
+                String(b.full_name ?? ""),
+              ),
+            ),
+          );
+        }
+      } catch (reason) {
+        if (active) {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Unable to load existing guardians.",
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadGuardians();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    const formData = new FormData(event.currentTarget);
+    const payload: Record<string, unknown> = {
+      studentId: student.id,
+      isPrimary: formData.has("isPrimary"),
+    };
+
+    if (mode === "existing") {
+      payload.guardianId = formData.get("guardianId");
+    } else {
+      payload.fullName = formData.get("fullName");
+      payload.relationship = formData.get("relationship");
+      payload.email = formData.get("email");
+      payload.phone = formData.get("phone");
+      payload.address = formData.get("address");
+      payload.postcode = formData.get("postcode");
+      payload.emergencyContactNumber =
+        formData.get("emergencyContactNumber");
+    }
+
+    try {
+      const response = await fetch("/api/v1/guardians", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setError(result.error ?? "Unable to link guardian.");
+        return;
+      }
+
+      saved();
+    } catch {
+      setError("Unable to connect to the server.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const studentName =
+    String(
+      student.name ??
+        `${student.first_name ?? ""} ${student.last_name ?? ""}`,
+    ).trim() || "this student";
+
+  return (
+    <div className="modal manual-registration-modal">
+      <form onSubmit={submit}>
+        <header>
+          <div>
+            <small>Student profile</small>
+            <h2>Add guardian details</h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={close}
+            disabled={busy}
+            aria-label="Close"
+          >
+            <X />
+          </button>
+        </header>
+
+        <p className="manual-registration-intro">
+          Link a guardian to <strong>{studentName}</strong>. Choose an existing
+          guardian when a sibling is already registered, or create a new
+          guardian record.
+        </p>
+
+        <fieldset>
+          <legend>Guardian option</legend>
+
+          <div
+            className="guardian-choice"
+            role="group"
+            aria-label="Guardian option"
+          >
+            <button
+              type="button"
+              className={mode === "new" ? "active" : ""}
+              onClick={() => setMode("new")}
+              disabled={busy}
+            >
+              Add new guardian
+            </button>
+
+            <button
+              type="button"
+              className={mode === "existing" ? "active" : ""}
+              onClick={() => setMode("existing")}
+              disabled={busy || loading || guardians.length === 0}
+            >
+              Select existing guardian
+            </button>
+          </div>
+
+          {mode === "existing" ? (
+            <label>
+              Existing guardian
+              <select
+                name="guardianId"
+                required
+                defaultValue=""
+                disabled={loading}
+              >
+                <option value="" disabled>
+                  {loading
+                    ? "Loading guardians..."
+                    : guardians.length
+                      ? "Select guardian"
+                      : "No existing guardians available"}
+                </option>
+
+                {guardians.map((guardian) => (
+                  <option
+                    key={String(guardian.id ?? "")}
+                    value={String(guardian.id ?? "")}
+                  >
+                    {String(guardian.full_name ?? "Guardian")}
+                    {" - "}
+                    {String(guardian.email ?? guardian.phone ?? "No contact details")}
+                    {Number(guardian.children ?? 0) > 0
+                      ? ` - ${Number(guardian.children)} linked child${
+                          Number(guardian.children) === 1 ? "" : "ren"
+                        }`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="form-grid">
+              <label>
+                Full name
+                <input name="fullName" required />
+              </label>
+
+              <label>
+                Relationship
+                <select name="relationship" required defaultValue="">
+                  <option value="" disabled>
+                    Select relationship
+                  </option>
+                  <option value="Mother">Mother</option>
+                  <option value="Father">Father</option>
+                  <option value="Guardian">Guardian</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+
+              <label>
+                Email address
+                <input name="email" type="email" required />
+              </label>
+
+              <label>
+                Phone number
+                <input name="phone" type="tel" required />
+              </label>
+
+              <label className="wide-field">
+                Home address
+                <input name="address" />
+              </label>
+
+              <label>
+                Postcode
+                <input name="postcode" />
+              </label>
+
+              <label>
+                Emergency contact number
+                <input
+                  name="emergencyContactNumber"
+                  type="tel"
+                />
+              </label>
+            </div>
+          )}
+
+          <label className="guardian-primary-checkbox">
+            <input
+              type="checkbox"
+              name="isPrimary"
+              value="true"
+              defaultChecked
+            />
+
+            <span>
+              <strong>Set as primary guardian</strong>
+              <small>
+                The primary guardian is used as the main family contact for
+                this student.
+              </small>
+            </span>
+          </label>
+        </fieldset>
+
+        {error && <output>{error}</output>}
+
+        <footer>
+          <button
+            type="button"
+            onClick={close}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+
+          <button
+            className="primary"
+            disabled={
+              busy ||
+              (mode === "existing" && loading)
+            }
+          >
+            {busy ? "Saving..." : "Link guardian"}
+          </button>
+        </footer>
+      </form>
+    </div>
   );
 }
 

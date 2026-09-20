@@ -970,6 +970,155 @@ export async function POST(
             );
           }
 
+          const selectedGuardianId =
+            optional(
+              x.guardianId,
+            );
+
+          if (selectedGuardianId) {
+            const selectedGuardian =
+              await first<{
+                id: string;
+                full_name: string;
+                email: string | null;
+                phone: string | null;
+                relationship: string | null;
+              }>(
+                `select
+                   id,
+                   full_name,
+                   email,
+                   phone,
+                   relationship
+                 from guardians
+                 where id = ?
+                 limit 1`,
+                selectedGuardianId,
+              );
+
+            if (!selectedGuardian) {
+              throw new ApiError(
+                404,
+                "Guardian not found.",
+              );
+            }
+
+            const existingLink =
+              await first<{
+                id: string;
+              }>(
+                `select id
+                 from student_guardians
+                 where
+                   student_id = ?
+                   and guardian_id = ?
+                 limit 1`,
+                studentId,
+                selectedGuardianId,
+              );
+
+            if (existingLink) {
+              throw new ApiError(
+                409,
+                "This guardian is already linked to the selected student.",
+              );
+            }
+
+            const isPrimary =
+              boolean(
+                x.isPrimary,
+              );
+
+            const db =
+              d1();
+
+            const statements = [];
+
+            if (isPrimary) {
+              statements.push(
+                db
+                  .prepare(
+                    `update student_guardians
+                     set
+                       is_primary = 0,
+                       updated_at = CURRENT_TIMESTAMP
+                     where student_id = ?
+                       and is_primary = 1`,
+                  )
+                  .bind(
+                    studentId,
+                  ),
+              );
+            }
+
+            statements.push(
+              db
+                .prepare(
+                  `insert into student_guardians
+                     (
+                       id,
+                       student_id,
+                       guardian_id,
+                       is_primary,
+                       authorised_collection
+                     )
+                   values (?, ?, ?, ?, 1)`,
+                )
+                .bind(
+                  crypto.randomUUID(),
+                  studentId,
+                  selectedGuardianId,
+                  isPrimary
+                    ? 1
+                    : 0,
+                ),
+            );
+
+            await db.batch(
+              statements,
+            );
+
+            await audit(
+              who,
+              "link-existing-guardian",
+              "guardians",
+              selectedGuardianId,
+              {
+                studentId,
+                studentName:
+                  `${student.first_name} ${student.last_name}`,
+                guardianName:
+                  selectedGuardian.full_name,
+                guardianEmail:
+                  selectedGuardian.email,
+                isPrimary,
+              },
+            );
+
+            row =
+              await first(
+                `select
+                   g.*,
+                   count(sg.student_id) as children
+                 from guardians g
+                 left join student_guardians sg
+                   on sg.guardian_id = g.id
+                 where g.id = ?
+                 group by g.id
+                 limit 1`,
+                selectedGuardianId,
+              );
+
+            return json(
+              {
+                ok: true,
+                data: row,
+                linkedExisting: true,
+              },
+              201,
+            );
+          }
+
           const email =
             required(
               x.email,
