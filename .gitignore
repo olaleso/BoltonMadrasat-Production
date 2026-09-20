@@ -1,43 +1,78 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
+# Environment / secrets
+.env
+.env.*
 !.env.example
 
-# vercel
-.vercel
+# Dependencies
+node_modules/
 
-# typescript
-next-env.d.ts
-/dist/
-/.wrangler/
-/.sites-runtime/
-/outputs/
-/work/
+# Build output
+dist/
+.next/
+.sites-runtime/
+
+# Wrangler local state
+.wrangler/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local archives
+*.zip
+
+.dev.vars
+.vs/
+*.tsbuildinfo
+backups/
+patch-backups/
+.patch-temp-*/
+multi-role-source/
+media-gallery-temp/
+client-observations-fix/
+client-observations-fix-v2/
+complete-manual-student-registration/
+BNMC-Communication-Centre-Patch/
+admission-letter-template-patch/
+*.bak
+*.before-*
+*.permission-fix-*
+*.permission-repair-*
+*BKP.ts
+typescript-fix-bundle/
+BNMC-Final-TypeScript-Sources/
+
+/apply-*.ps1
+/diagnose-*.ps1
+/repair-*.ps1
+/fix-*.ps1
+/install-*.ps1
+/check-*.sql
+/verify-*.sql
+/set-test-*.sql
+/fix-test-*.sql
+/pre-production-backup-*.sql
+/reconcile-migration-history.sql
+/all-students.sql
+/all-students.json
+/*.xlsx
+/*context*.txt
+/*NOTES*.txt
+/CLIENT-FEEDBACK-IMPROVEMENTS.txt
+/MEDIA-GALLERY-README.txt
+/MULTI_ROLE_UPGRADE_README.txt
+/README.txt
+/billing-route-current.txt
+/current-admission-form.txt
+/backend-current.ts
+/portal-client-invoice-payment-fixes.tsx
+/admission-letter-page-category-update.tsx
+/run_nbs_iso25012_audit_v3.py
+/scripts/*.tsfrag
+/scripts/apply-client-feedback-source-patches.mjs

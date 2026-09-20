@@ -1,0 +1,506 @@
+.admissions-page {
+  min-height: 100vh;
+  background: #f3f6f4;
+  color: #26392f;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.admissions-header {
+  height: 72px;
+  background: #043b24;
+  padding: 0 max(24px, calc((100% - 1180px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admissions-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.admissions-brand img {
+  border-radius: 50%;
+}
+
+.admissions-brand span {
+  display: grid;
+}
+
+.admissions-brand b {
+  font-family: Georgia, serif;
+}
+
+.admissions-brand small {
+  color: #c7aa2f;
+  font-size: 9px;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.back-link svg {
+  width: 15px;
+}
+
+.admissions-shell {
+  width: min(1180px, calc(100% - 34px));
+  margin: 28px auto;
+}
+
+.admissions-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.admissions-title > div > small {
+  color: #ad941f;
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admissions-title h1 {
+  margin: 5px 0;
+  color: #075d36;
+  font: 28px Georgia, serif;
+}
+
+.admissions-title p {
+  margin: 0;
+  color: #6c7d73;
+  font-size: 11px;
+}
+
+.admissions-title button,
+.card-action button,
+.admission-dialog footer button {
+  border: 1px solid #cad8cf;
+  background: #fff;
+  color: #075d36;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 10px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.primary {
+  background: #075d36 !important;
+  border-color: #075d36 !important;
+  color: #fff !important;
+}
+
+.admissions-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admissions-summary section {
+  background: #fff;
+  border: 1px solid #dfe7e1;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.admissions-summary svg {
+  width: 21px;
+  color: #075d36;
+}
+
+.admissions-summary span {
+  display: grid;
+}
+
+.admissions-summary b {
+  color: #075d36;
+  font-size: 19px;
+}
+
+.admissions-summary small {
+  color: #718178;
+  font-size: 8px;
+}
+
+.admissions-tabs {
+  display: flex;
+  gap: 5px;
+  width: fit-content;
+  margin-bottom: 15px;
+  padding: 5px;
+  background: #e9efeb;
+  border: 1px solid #dce5df;
+  border-radius: 9px;
+}
+
+.admissions-tabs button {
+  border: 0;
+  background: transparent;
+  padding: 8px 11px;
+  border-radius: 6px;
+  color: #576b60;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.admissions-tabs button.active {
+  background: #075d36;
+  color: #fff;
+}
+
+.application-list {
+  display: grid;
+  gap: 10px;
+}
+
+.application-card {
+  background: #fff;
+  border: 1px solid #dfe7e1;
+  border-radius: 11px;
+  padding: 15px;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto;
+  align-items: center;
+  gap: 15px;
+}
+
+.student-main {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.student-main > span {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #c7aa2f;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+.student-main h3 {
+  margin: 0;
+  color: #075d36;
+  font-size: 13px;
+}
+
+.student-main p,
+.student-main small {
+  margin: 3px 0 0;
+  color: #728178;
+  font-size: 8px;
+}
+
+.student-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.student-summary span {
+  display: grid;
+  gap: 3px;
+}
+
+.student-summary small {
+  color: #78877e;
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.student-summary b {
+  font-size: 9px;
+}
+
+.application-status {
+  width: fit-content;
+  padding: 4px 7px;
+  border-radius: 12px;
+  background: #eef1ef;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.application-status.accepted {
+  background: #e2f2e7;
+  color: #087243;
+}
+
+.application-status.submitted,
+.application-status.under_review,
+.application-status.waitlisted {
+  background: #fff5d5;
+  color: #806c10;
+}
+
+.payment-pending {
+  display: inline-block;
+  padding: 8px;
+  border-radius: 7px;
+  background: #fff5d5;
+  color: #806c10;
+  font-size: 9px;
+}
+
+.success-message,
+.error-message {
+  padding: 11px 13px;
+  border-radius: 8px;
+  margin-bottom: 13px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.success-message {
+  background: #ecfdf3;
+  border: 1px solid #a7f3d0;
+  color: #166534;
+}
+
+.error-message {
+  background: #fff0ef;
+  border: 1px solid #efc2bd;
+  color: #9b2018;
+}
+
+.empty-admissions {
+  min-height: 280px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 9px;
+  text-align: center;
+  color: #728178;
+}
+
+.empty-admissions svg {
+  width: 32px;
+  color: #075d36;
+}
+
+.admission-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  padding: 18px;
+  background: #00180f99;
+  display: grid;
+  place-items: center;
+}
+
+.admission-dialog {
+  width: min(850px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 14px;
+}
+
+.admission-dialog > header {
+  padding: 18px 22px;
+  border-bottom: 1px solid #e0e8e2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admission-dialog header small {
+  color: #ad941f;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admission-dialog header h2 {
+  margin: 4px 0 0;
+  color: #075d36;
+  font: 22px Georgia, serif;
+}
+
+.admission-dialog header button {
+  border: 0;
+  background: none;
+}
+
+.admission-dialog header svg {
+  width: 18px;
+}
+
+.review-grid {
+  padding: 18px 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.review-grid section {
+  padding: 13px;
+  background: #fafcfb;
+  border: 1px solid #e0e8e2;
+  border-radius: 9px;
+}
+
+.review-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.review-grid h3,
+.accept-panel h3 {
+  margin: 0 0 9px;
+  color: #075d36;
+  font: 16px Georgia, serif;
+}
+
+.review-grid p {
+  margin: 0;
+  padding: 7px 0;
+  border-top: 1px solid #edf1ee;
+  display: grid;
+  grid-template-columns: 145px 1fr;
+  gap: 9px;
+  font-size: 9px;
+}
+
+.review-grid p:first-of-type {
+  border-top: 0;
+}
+
+.review-grid span {
+  color: #75857c;
+}
+
+.accept-panel {
+  margin: 0 22px 18px;
+  padding: 16px;
+  border: 1px solid #bad0c2;
+  background: #f3f8f5;
+  border-radius: 10px;
+}
+
+.accept-panel > p {
+  margin: 0 0 12px;
+  color: #6d7d74;
+  font-size: 9px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 11px;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.form-grid input,
+.form-grid select,
+.form-grid textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd8d0;
+  border-radius: 7px;
+  padding: 10px;
+  background: #fff;
+  color: #25372d;
+}
+
+.form-grid textarea {
+  resize: vertical;
+}
+
+.dialog-error {
+  margin-inline: 22px;
+}
+
+.admission-dialog > footer {
+  padding: 15px 22px;
+  border-top: 1px solid #e0e8e2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media(max-width:800px) {
+
+  .application-card {
+    grid-template-columns: 1fr;
+  }
+
+  .admissions-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admissions-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .review-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-grid .wide {
+    grid-column: auto;
+  }
+}
+
+@media(max-width:560px) {
+
+  .admissions-header {
+    padding: 0 14px;
+  }
+
+  .back-link {
+    font-size: 0;
+  }
+
+  .admissions-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .student-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .review-grid p {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .admission-dialog > footer {
+    flex-direction: column;
+  }
+
+  .admission-dialog > footer button {
+    justify-content: center;
+  }
+}

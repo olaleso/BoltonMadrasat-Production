@@ -1,6 +1,6 @@
-# Bolton Madrasat Management System
+# BNMC Madrasah Management System
 
-A local-first Version 1 management application for the Bolton Nigerian Muslim Community Madrasat, designed and delivered by NuraSpecs.
+A local-first Version 1 management application for the Bolton Nigerian Muslim Community Madrasah, designed and delivered by NuraSpecs.
 
 ## What works
 
@@ -9,7 +9,7 @@ A local-first Version 1 management application for the Bolton Nigerian Muslim Co
 - Public admission form with transactional student/guardian/application creation
 - Students, guardians, applications, classes and enrolment data model
 - Attendance registers and safe-collection fields
-- Qur'an, Tajwid, Arabic and Islamic Studies progress records
+- Qur'an, Tajweed, Arabic and Islamic Studies progress records
 - Fees, discounts, payments and parent-specific balances
 - Announcements, staff compliance, dashboards, reports and audit logging
 - Parent-specific filtering for learning progress, fees and dashboard information
@@ -74,7 +74,7 @@ On Windows, Docker Desktop can use the WSL 2 backend. The application commands w
 
 ## Local accounts
 
-All seeded accounts use the password `Madrasat2026!`.
+All seeded accounts use the password `Madrasah2026!`.
 
 | Role          | Email                               |
 | ------------- | ----------------------------------- |

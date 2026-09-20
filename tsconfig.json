@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -19,7 +23,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
@@ -30,5 +36,30 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "examples", "worker", "build"]
+  "exclude": [
+    "node_modules",
+    "examples",
+    "worker",
+    "build",
+    ".next",
+    "dist",
+    "patch-backups",
+    "backups",
+    "typescript-fix-bundle",
+    ".patch-temp-client-feedback",
+    "multi-role-source",
+    "media-gallery-temp",
+    "BNMC-Communication-Centre-Patch",
+    "client-observations-fix",
+    "client-observations-fix-v2",
+    "complete-manual-student-registration",
+    "admission-letter-template-patch",
+    "**/*.bak",
+    "**/*BKP.ts",
+    "**/*BKP.tsx",
+    "**/*backup*.ts",
+    "**/*backup*.tsx",
+    "**/*.before-*.ts",
+    "**/*.before-*.tsx"
+  ]
 }
