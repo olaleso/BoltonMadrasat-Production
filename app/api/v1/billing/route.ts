@@ -147,9 +147,12 @@ export async function GET(
              (
                select count(*)
                from student_fee_agreements sfa
+               join students s
+                 on s.id = sfa.student_id
                where
                  sfa.fee_plan_id = fp.id
                  and sfa.status = 'active'
+                 and s.status = 'active'
              ) as active_agreements
 
            from fee_plans fp
@@ -281,6 +284,9 @@ export async function GET(
            left join fee_plans fp
              on fp.id =
                 sfa.fee_plan_id
+
+           where
+             s.status = 'active'
 
            order by
              case
@@ -414,6 +420,9 @@ export async function GET(
            left join fee_plans fp
              on fp.id =
                 sfa.fee_plan_id
+
+           where
+             s.status = 'active'
 
            order by
              case
