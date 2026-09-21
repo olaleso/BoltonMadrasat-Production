@@ -319,13 +319,28 @@ export async function GET(
                    g.phone,
                    case when g.id is null then 1 else 0 end as guardian_missing,
                    case when g.id is null then 'Required' else 'Complete' end as guardian_status,
+                   (select e2.class_id
+                      from enrolments e2
+                     where e2.student_id = s.id
+                     order by
+                       case when e2.status = 'active' then 0 else 1 end,
+                       e2.enrolled_at desc
+                     limit 1) as class_id,
                    (select c2.name
                       from enrolments e2
                       join classes c2 on c2.id = e2.class_id
                      where e2.student_id = s.id
-                       and e2.status = 'active'
-                     order by e2.enrolled_at desc
-                     limit 1) as class_name
+                     order by
+                       case when e2.status = 'active' then 0 else 1 end,
+                       e2.enrolled_at desc
+                     limit 1) as class_name,
+                   (select e2.status
+                      from enrolments e2
+                     where e2.student_id = s.id
+                     order by
+                       case when e2.status = 'active' then 0 else 1 end,
+                       e2.enrolled_at desc
+                     limit 1) as enrolment_status
                  from students s
                  left join student_guardians sg
                    on sg.student_id = s.id
@@ -3182,6 +3197,565 @@ export async function PATCH(
 
     if (
       resource ===
+        "students" &&
+      x.action ===
+        "reinstate"
+    ) {
+      const classId =
+        required(
+          x.classId,
+          "Class",
+        );
+
+      const returnDate =
+        required(
+          x.returnDate,
+          "Return date",
+        );
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(
+          returnDate,
+        )
+      ) {
+        throw new ApiError(
+          400,
+          "Return date must be in YYYY-MM-DD format.",
+        );
+      }
+
+      const parsedReturnDate =
+        new Date(
+          `${returnDate}T00:00:00Z`,
+        );
+
+      if (
+        Number.isNaN(
+          parsedReturnDate.getTime(),
+        ) ||
+        parsedReturnDate
+          .toISOString()
+          .slice(0, 10) !==
+          returnDate
+      ) {
+        throw new ApiError(
+          400,
+          "Return date is not a valid calendar date.",
+        );
+      }
+
+      const today =
+        new Date()
+          .toISOString()
+          .slice(0, 10);
+
+      if (
+        returnDate >
+        today
+      ) {
+        throw new ApiError(
+          400,
+          "Return date cannot be in the future.",
+        );
+      }
+
+      const student =
+        await first<{
+          id: string;
+          student_number: string;
+          first_name: string;
+          last_name: string;
+          gender: string | null;
+          status: string;
+        }>(
+          `select
+             id,
+             student_number,
+             first_name,
+             last_name,
+             gender,
+             status
+           from students
+           where id = ?
+           limit 1`,
+          id,
+        );
+
+      if (!student) {
+        throw new ApiError(
+          404,
+          "Student not found.",
+        );
+      }
+
+      if (
+        student.status ===
+        "active"
+      ) {
+        throw new ApiError(
+          409,
+          "This student is already active.",
+        );
+      }
+
+      const classRow =
+        await first<{
+          id: string;
+          name: string;
+          capacity: number;
+          status: string;
+        }>(
+          `select
+             id,
+             name,
+             capacity,
+             status
+           from classes
+           where id = ?
+           limit 1`,
+          classId,
+        );
+
+      if (!classRow) {
+        throw new ApiError(
+          404,
+          "Class not found.",
+        );
+      }
+
+      if (
+        classRow.status !==
+        "active"
+      ) {
+        throw new ApiError(
+          409,
+          "The selected class is not active.",
+        );
+      }
+
+      const gender =
+        String(
+          student.gender ??
+            "",
+        )
+          .trim()
+          .toLowerCase();
+
+      const classNameLower =
+        classRow.name
+          .toLowerCase();
+
+      if (
+        gender ===
+          "male" &&
+        classNameLower.includes(
+          "(female)",
+        )
+      ) {
+        throw new ApiError(
+          409,
+          "This student cannot be reinstated into a female class.",
+        );
+      }
+
+      if (
+        gender ===
+          "female" &&
+        classNameLower.includes(
+          "(male)",
+        )
+      ) {
+        throw new ApiError(
+          409,
+          "This student cannot be reinstated into a male class.",
+        );
+      }
+
+      const activeClassCount =
+        await first<{
+          total: number;
+        }>(
+          `select
+             count(*) as total
+           from enrolments
+           where
+             class_id = ?
+             and status = 'active'
+             and student_id <> ?`,
+          classId,
+          id,
+        );
+
+      if (
+        Number(
+          activeClassCount?.total ??
+            0,
+        ) >=
+        Number(
+          classRow.capacity,
+        )
+      ) {
+        throw new ApiError(
+          409,
+          `${classRow.name} is already full.`,
+        );
+      }
+
+      const existingEnrolment =
+        await first<{
+          id: string;
+        }>(
+          `select id
+           from enrolments
+           where
+             student_id = ?
+             and class_id = ?
+           limit 1`,
+          id,
+          classId,
+        );
+
+      const previousAgreement =
+        await first<{
+          fee_plan_id: string | null;
+          monthly_amount_pence: number;
+          discount_pence: number;
+          billing_day: number;
+          collection_method: string;
+        }>(
+          `select
+             fee_plan_id,
+             monthly_amount_pence,
+             discount_pence,
+             billing_day,
+             collection_method
+           from student_fee_agreements
+           where student_id = ?
+           order by
+             updated_at desc,
+             created_at desc
+           limit 1`,
+          id,
+        );
+
+      const preferredPlan =
+        previousAgreement?.fee_plan_id
+          ? await first<{
+              id: string;
+              name: string;
+              amount_pence: number;
+            }>(
+              `select
+                 id,
+                 name,
+                 amount_pence
+               from fee_plans
+               where
+                 id = ?
+                 and active = 1
+                 and frequency = 'monthly'
+               limit 1`,
+              previousAgreement.fee_plan_id,
+            )
+          : null;
+
+      const standardPlan =
+        preferredPlan ??
+        await first<{
+          id: string;
+          name: string;
+          amount_pence: number;
+        }>(
+          `select
+             id,
+             name,
+             amount_pence
+           from fee_plans
+           where
+             active = 1
+             and frequency = 'monthly'
+           order by
+             case
+               when id =
+                 'standard-monthly-30'
+               then 0
+               else 1
+             end,
+             created_at
+           limit 1`,
+        );
+
+      if (!standardPlan) {
+        throw new ApiError(
+          409,
+          "The standard monthly fee plan is not configured.",
+        );
+      }
+
+      const monthlyAmountPence =
+        Number(
+          previousAgreement
+            ?.monthly_amount_pence ??
+            standardPlan.amount_pence,
+        );
+
+      const discountPence =
+        Math.max(
+          0,
+          Number(
+            previousAgreement
+              ?.discount_pence ??
+              0,
+          ),
+        );
+
+      const billingDay =
+        Math.min(
+          28,
+          Math.max(
+            1,
+            Number(
+              previousAgreement
+                ?.billing_day ??
+                1,
+            ),
+          ),
+        );
+
+      const previousCollectionMethod =
+        String(
+          previousAgreement
+            ?.collection_method ??
+            "online",
+        )
+          .trim()
+          .toLowerCase();
+
+      const collectionMethod =
+        [
+          "direct_debit",
+          "online",
+        ].includes(
+          previousCollectionMethod,
+        )
+          ? previousCollectionMethod
+          : "online";
+
+      const enrolmentId =
+        existingEnrolment?.id ??
+        crypto.randomUUID();
+
+      const feeAgreementId =
+        crypto.randomUUID();
+
+      const db =
+        d1();
+
+      const statements = [
+        db
+          .prepare(
+            `update students
+             set
+               status = 'active',
+               updated_at =
+                 CURRENT_TIMESTAMP
+             where id = ?`,
+          )
+          .bind(
+            id,
+          ),
+
+        db
+          .prepare(
+            `update enrolments
+             set
+               status = 'inactive',
+               updated_at =
+                 CURRENT_TIMESTAMP
+             where
+               student_id = ?
+               and status = 'active'`,
+          )
+          .bind(
+            id,
+          ),
+
+        db
+          .prepare(
+            `update student_fee_agreements
+             set
+               status = 'inactive',
+               ends_on =
+                 coalesce(
+                   ends_on,
+                   date(?, '-1 day')
+                 ),
+               updated_at =
+                 CURRENT_TIMESTAMP
+             where
+               student_id = ?
+               and status = 'active'`,
+          )
+          .bind(
+            returnDate,
+            id,
+          ),
+      ];
+
+      if (
+        existingEnrolment
+      ) {
+        statements.push(
+          db
+            .prepare(
+              `update enrolments
+               set
+                 status = 'active',
+                 enrolled_at = ?,
+                 updated_at =
+                   CURRENT_TIMESTAMP
+               where id = ?`,
+            )
+            .bind(
+              returnDate,
+              enrolmentId,
+            ),
+        );
+      } else {
+        statements.push(
+          db
+            .prepare(
+              `insert into enrolments
+                 (
+                   id,
+                   student_id,
+                   class_id,
+                   enrolled_at,
+                   status
+                 )
+               values (
+                 ?, ?, ?, ?, 'active'
+               )`,
+            )
+            .bind(
+              enrolmentId,
+              id,
+              classId,
+              returnDate,
+            ),
+        );
+      }
+
+      statements.push(
+        db
+          .prepare(
+            `insert into student_fee_agreements
+               (
+                 id,
+                 student_id,
+                 fee_plan_id,
+                 monthly_amount_pence,
+                 discount_pence,
+                 billing_day,
+                 starts_on,
+                 ends_on,
+                 collection_method,
+                 status
+               )
+             values (
+               ?, ?, ?, ?, ?, ?,
+               ?, null, ?, 'active'
+             )`,
+          )
+          .bind(
+            feeAgreementId,
+            id,
+            standardPlan.id,
+            monthlyAmountPence,
+            discountPence,
+            billingDay,
+            returnDate,
+            collectionMethod,
+          ),
+      );
+
+      statements.push(
+        db
+          .prepare(
+            `insert into audit_log
+               (
+                 id,
+                 user_id,
+                 action,
+                 entity_type,
+                 entity_id,
+                 details
+               )
+             values (
+               ?, ?, ?, ?, ?, ?
+             )`,
+          )
+          .bind(
+            crypto.randomUUID(),
+            who.id,
+            "reinstate-student",
+            "students",
+            id,
+            JSON.stringify({
+              studentNumber:
+                student.student_number,
+              studentName:
+                `${student.first_name} ${student.last_name}`,
+              previousStatus:
+                student.status,
+              classId,
+              className:
+                classRow.name,
+              returnDate,
+              feeAgreementId,
+              feePlanId:
+                standardPlan.id,
+              feePlanName:
+                standardPlan.name,
+              monthlyAmountPence,
+              discountPence,
+              billingDay,
+              collectionMethod,
+            }),
+          ),
+      );
+
+      await db.batch(
+        statements,
+      );
+
+      const row =
+        await first(
+          `select
+             s.*,
+             s.first_name || ' ' ||
+             s.last_name as name,
+             ? as class_id,
+             ? as class_name,
+             'active' as enrolment_status
+           from students s
+           where s.id = ?
+           limit 1`,
+          classId,
+          classRow.name,
+          id,
+        );
+
+      return json({
+        ok: true,
+        data: row,
+        message:
+          `${student.first_name} ${student.last_name} has been reinstated to ${classRow.name}.`,
+      });
+    }
+
+    if (
+      resource ===
       "guardians"
     ) {
       const currentGuardian = await first<{
@@ -4774,6 +5348,172 @@ export async function PATCH(
         x.status,
         "Status",
       );
+
+    if (
+      resource ===
+        "students" &&
+      status ===
+        "inactive"
+    ) {
+      const current =
+        await first<{
+          id: string;
+          student_number: string;
+          first_name: string;
+          last_name: string;
+          status: string;
+        }>(
+          `select
+             id,
+             student_number,
+             first_name,
+             last_name,
+             status
+           from students
+           where id = ?
+           limit 1`,
+          id,
+        );
+
+      if (!current) {
+        return json(
+          {
+            ok: false,
+            error:
+              "Record not found",
+          },
+          404,
+        );
+      }
+
+      const db =
+        d1();
+
+      await db.batch([
+        db
+          .prepare(
+            `update students
+             set
+               status = 'inactive',
+               updated_at =
+                 CURRENT_TIMESTAMP
+             where id = ?`,
+          )
+          .bind(
+            id,
+          ),
+
+        db
+          .prepare(
+            `update enrolments
+             set
+               status = 'inactive',
+               updated_at =
+                 CURRENT_TIMESTAMP
+             where
+               student_id = ?
+               and status = 'active'`,
+          )
+          .bind(
+            id,
+          ),
+
+        db
+          .prepare(
+            `update student_fee_agreements
+             set
+               status = 'inactive',
+               ends_on =
+                 coalesce(
+                   ends_on,
+                   date('now')
+                 ),
+               updated_at =
+                 CURRENT_TIMESTAMP
+             where
+               student_id = ?
+               and status = 'active'`,
+          )
+          .bind(
+            id,
+          ),
+
+        db
+          .prepare(
+            `insert into audit_log
+               (
+                 id,
+                 user_id,
+                 action,
+                 entity_type,
+                 entity_id,
+                 details
+               )
+             values (
+               ?, ?, ?, ?, ?, ?
+             )`,
+          )
+          .bind(
+            crypto.randomUUID(),
+            who.id,
+            "archive-student",
+            "students",
+            id,
+            JSON.stringify({
+              studentNumber:
+                current.student_number,
+              studentName:
+                `${current.first_name} ${current.last_name}`,
+              previousStatus:
+                current.status,
+              status:
+                "inactive",
+            }),
+          ),
+      ]);
+
+      const row =
+        await first(
+          `select *
+           from students
+           where id = ?
+           limit 1`,
+          id,
+        );
+
+      return json({
+        ok: true,
+        data: row,
+      });
+    }
+
+    if (
+      resource ===
+        "students" &&
+      status ===
+        "active"
+    ) {
+      const current =
+        await first<{
+          status: string;
+        }>(
+          `select status
+           from students
+           where id = ?
+           limit 1`,
+          id,
+        );
+
+      if (
+        current?.status ===
+        "inactive"
+      ) {
+        throw new ApiError(
+          409,
+          "Use Reinstate student so the class enrolment and billing setup are restored together.",
+        );
+      }
+    }
 
     const patchable:
       Partial<

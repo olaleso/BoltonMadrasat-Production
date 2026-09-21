@@ -862,6 +862,7 @@ const headings: Record<
   students: [
     "student_number",
     "name",
+    "class_name",
     "guardian",
     "phone",
     "guardian_status",
@@ -17860,6 +17861,13 @@ function Records({
   ] = useState(false);
 
   const [
+    studentListView,
+    setStudentListView,
+  ] = useState<
+    "active" | "archived"
+  >("active");
+
+  const [
     missingGuardianOnly,
     setMissingGuardianOnly,
   ] = useState(false);
@@ -17870,10 +17878,47 @@ function Records({
         resource === "students"
           ? rows.filter(
               (row) =>
+                String(
+                  row.status ??
+                    "",
+                ) !==
+                  "inactive" &&
                 Number(
                   row.guardian_missing ??
                     0,
                 ) === 1,
+            ).length
+          : 0,
+      [resource, rows],
+    );
+
+  const activeStudentCount =
+    useMemo(
+      () =>
+        resource === "students"
+          ? rows.filter(
+              (row) =>
+                String(
+                  row.status ??
+                    "",
+                ) !==
+                "inactive",
+            ).length
+          : 0,
+      [resource, rows],
+    );
+
+  const archivedStudentCount =
+    useMemo(
+      () =>
+        resource === "students"
+          ? rows.filter(
+              (row) =>
+                String(
+                  row.status ??
+                    "",
+                ) ===
+                "inactive",
             ).length
           : 0,
       [resource, rows],
@@ -17951,6 +17996,27 @@ function Records({
               }
 
               if (
+                resource ===
+                "students"
+              ) {
+                if (
+                  studentListView ===
+                    "active" &&
+                  rowStatus ===
+                    "inactive"
+                ) {
+                  return false;
+                }
+
+                if (
+                  studentListView ===
+                    "archived" &&
+                  rowStatus !==
+                    "inactive"
+                ) {
+                  return false;
+                }
+              } else if (
                 supportsArchive &&
                 !showArchived &&
                 statusFilter === "all" &&
@@ -18076,6 +18142,7 @@ function Records({
         sortColumn,
         sortDirection,
         showArchived,
+        studentListView,
         supportsArchive,
         missingGuardianOnly,
         resource,
@@ -18172,6 +18239,54 @@ function Records({
     admissionClassesLoading,
     setAdmissionClassesLoading,
   ] = useState(false);
+
+  const [
+    reinstateDialog,
+    setReinstateDialog,
+  ] = useState<{
+    id: string;
+    name: string;
+    studentNumber: string;
+    gender: string;
+    previousClassId: string;
+    previousClassName: string;
+  } | null>(null);
+
+  const [
+    reinstateClasses,
+    setReinstateClasses,
+  ] = useState<
+    AdmissionClass[]
+  >([]);
+
+  const [
+    reinstateClassId,
+    setReinstateClassId,
+  ] = useState("");
+
+  const [
+    reinstateReturnDate,
+    setReinstateReturnDate,
+  ] = useState(
+    new Date()
+      .toISOString()
+      .slice(0, 10),
+  );
+
+  const [
+    reinstateLoading,
+    setReinstateLoading,
+  ] = useState(false);
+
+  const [
+    reinstateBusy,
+    setReinstateBusy,
+  ] = useState(false);
+
+  const [
+    reinstateError,
+    setReinstateError,
+  ] = useState("");
 
   const [
     deleteDialog,
@@ -18479,6 +18594,339 @@ function Records({
       );
     } finally {
       setStaffDeleteBusy(
+        false,
+      );
+    }
+  }
+
+  async function openReinstateDialog(
+    row: Row,
+  ) {
+    const name =
+      String(
+        row.name ??
+          `${row.first_name ?? ""} ${row.last_name ?? ""}`,
+      ).trim() ||
+      "this student";
+
+    const previousClassId =
+      String(
+        row.class_id ??
+          "",
+      );
+
+    const previousClassName =
+      String(
+        row.class_name ??
+          "",
+      );
+
+    setReinstateDialog({
+      id:
+        String(
+          row.id ??
+            "",
+        ),
+      name,
+      studentNumber:
+        String(
+          row.student_number ??
+            "",
+        ),
+      gender:
+        String(
+          row.gender ??
+            "",
+        ),
+      previousClassId,
+      previousClassName,
+    });
+
+    setReinstateClassId(
+      "",
+    );
+    setReinstateReturnDate(
+      new Date()
+        .toISOString()
+        .slice(0, 10),
+    );
+    setReinstateError(
+      "",
+    );
+    setReinstateLoading(
+      true,
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/v1/classes",
+          {
+            cache:
+              "no-store",
+          },
+        );
+
+      const result =
+        (await response
+          .json()
+          .catch(
+            () => ({}),
+          )) as {
+          data?: Row[];
+          error?: string;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ??
+            "Unable to load classes",
+        );
+      }
+
+      const gender =
+        String(
+          row.gender ??
+            "",
+        )
+          .trim()
+          .toLowerCase();
+
+      const classes =
+        (result.data ?? [])
+          .map(
+            (item) => ({
+              id:
+                String(
+                  item.id ??
+                    "",
+                ),
+              name:
+                String(
+                  item.name ??
+                    "Class",
+                ),
+              enrolled:
+                Number(
+                  item.enrolled ??
+                    0,
+                ),
+              capacity:
+                Number(
+                  item.capacity ??
+                    0,
+                ),
+              status:
+                String(
+                  item.status ??
+                    "",
+                ),
+            }),
+          )
+          .filter(
+            (item) =>
+              item.id &&
+              item.status ===
+                "active" &&
+              (
+                !gender ||
+                ![
+                  "male",
+                  "female",
+                ].includes(
+                  gender,
+                ) ||
+                item.name
+                  .toLowerCase()
+                  .includes(
+                    `(${gender})`,
+                  )
+              ),
+          );
+
+      setReinstateClasses(
+        classes,
+      );
+
+      const previous =
+        classes.find(
+          (item) =>
+            item.id ===
+              previousClassId &&
+            item.enrolled <
+              item.capacity,
+        );
+
+      const firstAvailable =
+        classes.find(
+          (item) =>
+            item.enrolled <
+            item.capacity,
+        );
+
+      setReinstateClassId(
+        previous?.id ??
+          firstAvailable?.id ??
+          "",
+      );
+    } catch (error) {
+      setReinstateClasses(
+        [],
+      );
+      setReinstateError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load classes",
+      );
+    } finally {
+      setReinstateLoading(
+        false,
+      );
+    }
+  }
+
+  function closeReinstateDialog() {
+    if (
+      reinstateBusy
+    ) {
+      return;
+    }
+
+    setReinstateDialog(
+      null,
+    );
+    setReinstateClasses(
+      [],
+    );
+    setReinstateClassId(
+      "",
+    );
+    setReinstateError(
+      "",
+    );
+  }
+
+  async function confirmReinstateStudent() {
+    if (
+      !reinstateDialog?.id
+    ) {
+      return;
+    }
+
+    if (
+      !reinstateClassId
+    ) {
+      setReinstateError(
+        "Please select an available class.",
+      );
+      return;
+    }
+
+    if (
+      !reinstateReturnDate
+    ) {
+      setReinstateError(
+        "Please select the student's return date.",
+      );
+      return;
+    }
+
+    setReinstateBusy(
+      true,
+    );
+    setReinstateError(
+      "",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/v1/students",
+          {
+            method:
+              "PATCH",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                id:
+                  reinstateDialog.id,
+                action:
+                  "reinstate",
+                classId:
+                  reinstateClassId,
+                returnDate:
+                  reinstateReturnDate,
+              }),
+          },
+        );
+
+      const result =
+        (await response
+          .json()
+          .catch(
+            () => ({}),
+          )) as {
+          error?: string;
+          message?: string;
+        };
+
+      if (
+        response.status ===
+        401
+      ) {
+        window.location.assign(
+          "/login",
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        setReinstateError(
+          result.error ??
+            "Unable to reinstate this student.",
+        );
+        return;
+      }
+
+      const name =
+        reinstateDialog.name;
+
+      setReinstateDialog(
+        null,
+      );
+      setReinstateClasses(
+        [],
+      );
+      setReinstateClassId(
+        "",
+      );
+      setStudentListView(
+        "active",
+      );
+      setStatusFilter(
+        "all",
+      );
+      setMissingGuardianOnly(
+        false,
+      );
+      setStatusNotice({
+        type:
+          "success",
+        text:
+          result.message ??
+          `${name} has been reinstated successfully.`,
+      });
+
+      refresh();
+    } catch {
+      setReinstateError(
+        "Unable to connect to the server. Nothing was changed. Please try again.",
+      );
+    } finally {
+      setReinstateBusy(
         false,
       );
     }
@@ -18908,8 +19356,12 @@ function Records({
               ? `${visibleRows.length} enrolment${visibleRows.length === 1 ? "" : "s"} shown. Manage class placement, transfers and withdrawals here.`
               : resource === "progress"
                 ? `${visibleRows.length} assessment${visibleRows.length === 1 ? "" : "s"} shown. Review Qur'an learning and the next steps recorded for students.`
-                : resource === "students" && missingGuardianCount > 0
-                  ? `${visibleRows.length} of ${rows.length} students shown · ${missingGuardianCount} need guardian details`
+                : resource === "students"
+                  ? studentListView === "archived"
+                    ? `${visibleRows.length} of ${archivedStudentCount} archived student${archivedStudentCount === 1 ? "" : "s"} shown`
+                    : missingGuardianCount > 0
+                      ? `${visibleRows.length} of ${activeStudentCount} active students shown · ${missingGuardianCount} need guardian details`
+                      : `${visibleRows.length} of ${activeStudentCount} active student${activeStudentCount === 1 ? "" : "s"} shown`
                   : visibleRows.length === rows.length
                     ? `${rows.length} database record${rows.length === 1 ? "" : "s"}`
                     : `${visibleRows.length} of ${rows.length} records shown`}
@@ -18984,6 +19436,42 @@ function Records({
         </span>
       </div>
 
+      {resource === "students" && canManage && (
+        <div
+          className="billing-tabs student-record-tabs"
+          role="tablist"
+          aria-label="Student record view"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={studentListView === "active"}
+            className={studentListView === "active" ? "active" : ""}
+            onClick={() => {
+              setStudentListView("active");
+              setStatusFilter("all");
+              setMissingGuardianOnly(false);
+            }}
+          >
+            Active Students ({activeStudentCount})
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={studentListView === "archived"}
+            className={studentListView === "archived" ? "active" : ""}
+            onClick={() => {
+              setStudentListView("archived");
+              setStatusFilter("all");
+              setMissingGuardianOnly(false);
+            }}
+          >
+            Archived Students ({archivedStudentCount})
+          </button>
+        </div>
+      )}
+
       {statusNotice && (
         <div className={`records-notice ${statusNotice.type}`} role="status">
           <span>{statusNotice.text}</span>
@@ -19013,7 +19501,8 @@ function Records({
             />
           </label>
 
-          {statusOptions.length > 1 && (
+          {statusOptions.length > 1 &&
+            resource !== "students" && (
             <label className="record-filter">
               <span>
                 Status
@@ -19055,6 +19544,7 @@ function Records({
           )}
 
           {resource === "students" &&
+            studentListView === "active" &&
             canManage &&
             missingGuardianCount > 0 && (
               <label className="record-archive-toggle guardian-filter-toggle">
@@ -19087,7 +19577,9 @@ function Records({
             </label>
           )}
 
-          {supportsArchive && canManage && (
+          {supportsArchive &&
+            resource !== "students" &&
+            canManage && (
             <label className="record-archive-toggle">
               <input
                 type="checkbox"
@@ -19387,6 +19879,36 @@ function Records({
                           >
                             Edit guardian
                           </button>
+                        ) : resource === "students" ? (
+                          String(
+                            row.status ??
+                              "",
+                          ) ===
+                            "inactive" ? (
+                            <button
+                              type="button"
+                              className="row-action"
+                              onClick={() =>
+                                openReinstateDialog(
+                                  row,
+                                )
+                              }
+                            >
+                              Reinstate
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="row-action"
+                              onClick={() =>
+                                openStatusDialog(
+                                  row,
+                                )
+                              }
+                            >
+                              Archive / status
+                            </button>
+                          )
                         ) : resource === "classes" ? (
                           <>
                             <button
@@ -19465,6 +19987,10 @@ function Records({
                         )}
 
                         {resource === "students" &&
+                          String(
+                            row.status ??
+                              "",
+                          ) !== "inactive" &&
                           user.role === "admin" &&
                           Number(
                             row.guardian_missing ??
@@ -19483,7 +20009,11 @@ function Records({
                             </button>
                           )}
 
-                        {resource === "students" && (
+                        {resource === "students" &&
+                          String(
+                            row.status ??
+                              "",
+                          ) !== "inactive" && (
                           <button
                             type="button"
                             className="row-action danger-action"
@@ -19545,6 +20075,162 @@ function Records({
           </table>
         )}
       </div>
+
+      {reinstateDialog && (
+        <div className="modal">
+          <div className="status-dialog">
+            <header>
+              <div>
+                <small>
+                  Archived student
+                </small>
+
+                <h2>
+                  Reinstate {reinstateDialog.name}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeReinstateDialog}
+                disabled={reinstateBusy}
+                aria-label="Close"
+              >
+                <X />
+              </button>
+            </header>
+
+            <div className="status-dialog-body">
+              <div className="status-current">
+                <span>
+                  Student number
+                </span>
+
+                <strong>
+                  {reinstateDialog.studentNumber || "-"}
+                </strong>
+              </div>
+
+              {reinstateDialog.previousClassName && (
+                <div className="status-current">
+                  <span>
+                    Previous class
+                  </span>
+
+                  <strong>
+                    {reinstateDialog.previousClassName}
+                  </strong>
+                </div>
+              )}
+
+              <label className="admission-class-field">
+                Class
+
+                <select
+                  value={reinstateClassId}
+                  onChange={(event) =>
+                    setReinstateClassId(
+                      event.target.value,
+                    )
+                  }
+                  disabled={
+                    reinstateBusy ||
+                    reinstateLoading
+                  }
+                  required
+                >
+                  <option value="">
+                    {reinstateLoading
+                      ? "Loading suitable classes..."
+                      : "Select class"}
+                  </option>
+
+                  {reinstateClasses.map(
+                    (item) => {
+                      const full =
+                        item.enrolled >=
+                        item.capacity;
+
+                      return (
+                        <option
+                          key={item.id}
+                          value={item.id}
+                          disabled={full}
+                        >
+                          {item.name}
+                          {"  -  "}
+                          {item.enrolled}/
+                          {item.capacity}
+                          {full
+                            ? " (Full)"
+                            : " places"}
+                        </option>
+                      );
+                    },
+                  )}
+                </select>
+
+                <small>
+                  The previous class is selected automatically when it is still active and has capacity.
+                </small>
+              </label>
+
+              <label>
+                Return date
+
+                <input
+                  type="date"
+                  value={reinstateReturnDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) =>
+                    setReinstateReturnDate(
+                      event.target.value,
+                    )
+                  }
+                  disabled={reinstateBusy}
+                  required
+                />
+              </label>
+
+              <p>
+                Reinstating will restore the student to the selected class and create a new active monthly fee agreement from the return date. Historical attendance, guardian links, payments and cancelled invoices will remain unchanged.
+              </p>
+
+              {reinstateError && (
+                <output>
+                  {reinstateError}
+                </output>
+              )}
+            </div>
+
+            <footer>
+              <button
+                type="button"
+                onClick={closeReinstateDialog}
+                disabled={reinstateBusy}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="primary"
+                onClick={confirmReinstateStudent}
+                disabled={
+                  reinstateBusy ||
+                  reinstateLoading ||
+                  !reinstateClassId ||
+                  !reinstateReturnDate
+                }
+              >
+                {reinstateBusy
+                  ? "Reinstating..."
+                  : "Reinstate student"}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
 
       {statusDialog && (
         <div className="modal">
