@@ -5813,6 +5813,8 @@ function FailedEmails({
     useState("");
   const [resendAllBusy, setResendAllBusy] =
     useState(false);
+  const [deleteBusyId, setDeleteBusyId] =
+    useState("");
   const [message, setMessage] =
     useState("");
   const [error, setError] =
@@ -5978,6 +5980,97 @@ function FailedEmails({
     }
     finally {
       setBusyId(
+        "",
+      );
+    }
+  }
+
+  async function deleteFailure(
+    row: FailedEmailRow,
+  ) {
+    const confirmed =
+      window.confirm(
+        `Delete the failed email to ${row.recipient} from the retry queue? The delivery history will be retained for audit purposes.`,
+      );
+
+    if (
+      !confirmed
+    ) {
+      return;
+    }
+
+    setDeleteBusyId(
+      row.id,
+    );
+    setError("");
+    setMessage("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/v1/failed-emails",
+          {
+            method:
+              "DELETE",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                id:
+                  row.id,
+                source:
+                  row.source,
+              }),
+          },
+        );
+
+      const result =
+        (await response
+          .json()
+          .catch(
+            () => ({}),
+          )) as {
+          error?: string;
+          message?: string;
+        };
+
+      if (
+        !response.ok
+      ) {
+        setError(
+          result.error ??
+            "Failed email could not be deleted.",
+        );
+        return;
+      }
+
+      setRows(
+        (current) =>
+          current.filter(
+            (item) =>
+              !(
+                item.id ===
+                  row.id &&
+                item.source ===
+                  row.source
+              ),
+          ),
+      );
+
+      setMessage(
+        result.message ??
+          "Failed email removed from the retry queue.",
+      );
+    }
+    catch {
+      setError(
+        "Unable to connect to the server.",
+      );
+    }
+    finally {
+      setDeleteBusyId(
         "",
       );
     }
@@ -6188,6 +6281,8 @@ function FailedEmails({
                         disabled={
                           busyId ===
                             row.id ||
+                          deleteBusyId ===
+                            row.id ||
                           resendAllBusy
                         }
                         onClick={() =>
@@ -6200,6 +6295,28 @@ function FailedEmails({
                         row.id
                           ? "Resending..."
                           : "Resend"}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="row-action danger-action"
+                        disabled={
+                          busyId ===
+                            row.id ||
+                          deleteBusyId ===
+                            row.id ||
+                          resendAllBusy
+                        }
+                        onClick={() =>
+                          deleteFailure(
+                            row,
+                          )
+                        }
+                      >
+                        {deleteBusyId ===
+                        row.id
+                          ? "Deleting..."
+                          : "Delete"}
                       </button>
                     </td>
                   </tr>

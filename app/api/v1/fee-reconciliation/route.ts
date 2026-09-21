@@ -21,7 +21,7 @@ type InvoiceRow = {
   id: string;
   student_id: string;
   class_id: string | null;
-  fee_type: string;
+  fee_type: string | null;
   billing_year: number;
   billing_month: number;
   academic_year_key: string | null;
@@ -44,6 +44,173 @@ type RuleRow = {
   charge_month: number | null;
   active: number;
 };
+
+function invoiceGroupKey(
+  invoice: InvoiceRow,
+) {
+  const feeType =
+    String(
+      invoice.fee_type ??
+        "",
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    feeType ===
+      "books"
+  ) {
+    return `books:${invoice.academic_year_key ?? `${invoice.billing_year}-${invoice.billing_month}`}`;
+  }
+
+  /*
+   * Legacy monthly invoices created before fee reconciliation
+   * may not have fee_type populated. Treat those records as the
+   * same monthly Madrasah obligation rather than a second charge.
+   */
+  if (
+    !feeType ||
+    feeType ===
+      "madrasah" ||
+    feeType ===
+      "monthly"
+  ) {
+    return `madrasah:${invoice.billing_year}-${invoice.billing_month}`;
+  }
+
+  return `${feeType}:${invoice.id}`;
+}
+
+function normaliseFeeInvoices(
+  invoices: InvoiceRow[],
+) {
+  const groups =
+    new Map<
+      string,
+      InvoiceRow[]
+    >();
+
+  for (
+    const invoice of
+    invoices
+  ) {
+    const key =
+      invoiceGroupKey(
+        invoice,
+      );
+
+    const group =
+      groups.get(
+        key,
+      ) ??
+      [];
+
+    group.push(
+      invoice,
+    );
+
+    groups.set(
+      key,
+      group,
+    );
+  }
+
+  return Array.from(
+    groups.entries(),
+  ).map(
+    ([
+      key,
+      group,
+    ]) => {
+      const canonical =
+        [
+          ...group,
+        ].sort(
+          (
+            left,
+            right,
+          ) => {
+            const paidDifference =
+              Number(
+                right.amount_paid_pence ??
+                  0,
+              ) -
+              Number(
+                left.amount_paid_pence ??
+                  0,
+              );
+
+            if (
+              paidDifference !==
+              0
+            ) {
+              return paidDifference;
+            }
+
+            return String(
+              left.created_at ??
+                "",
+            ).localeCompare(
+              String(
+                right.created_at ??
+                  "",
+              ),
+            );
+          },
+        )[0];
+
+      const amountDue =
+        Math.max(
+          0,
+          ...group.map(
+            (invoice) =>
+              Number(
+                invoice.amount_due_pence ??
+                  0,
+              ),
+          ),
+        );
+
+      const amountPaid =
+        Math.min(
+          amountDue,
+          group.reduce(
+            (
+              total,
+              invoice,
+            ) =>
+              total +
+              Math.max(
+                0,
+                Number(
+                  invoice.amount_paid_pence ??
+                    0,
+                ),
+              ),
+            0,
+          ),
+        );
+
+      return {
+        ...canonical,
+        fee_type:
+          key.startsWith(
+            "madrasah:",
+          )
+            ? "madrasah"
+            : key.startsWith(
+                  "books:",
+                )
+              ? "books"
+              : canonical.fee_type,
+        amount_due_pence:
+          amountDue,
+        amount_paid_pence:
+          amountPaid,
+      };
+    },
+  );
+}
 
 function parsePeriod(
   request: Request,
@@ -399,8 +566,18 @@ async function prepareMonth(
            where student_id = ?
              and billing_year = ?
              and billing_month = ?
-             and fee_type = 'madrasah'
-           order by created_at
+             and (
+               fee_type = 'madrasah'
+               or fee_type is null
+               or trim(fee_type) = ''
+             )
+           order by
+             case
+               when fee_type = 'madrasah'
+               then 0
+               else 1
+             end,
+             created_at
            limit 1`,
         )
         .bind(
@@ -418,30 +595,45 @@ async function prepareMonth(
     ) {
       /*
        * Adopt legacy monthly invoices into this class reconciliation
-       * without changing their historical amount.
+       * without changing their historical amount. Older invoices may
+       * pre-date the fee_type metadata, so normalise that metadata too.
        */
-      if (
-        !existingMonthly.class_id
-      ) {
-        await db
-          .prepare(
-            `update fee_invoices
-             set
-               class_id = ?,
-               academic_year_key = ?,
-               fee_frequency = 'monthly',
-               fee_rule_id = ?,
-               updated_at = CURRENT_TIMESTAMP
-             where id = ?`,
-          )
-          .bind(
-            classId,
-            academicYear,
-            monthlyRule.id,
-            existingMonthly.id,
-          )
-          .run();
-      }
+      await db
+        .prepare(
+          `update fee_invoices
+           set
+             fee_type = 'madrasah',
+             class_id =
+               coalesce(
+                 class_id,
+                 ?
+               ),
+             academic_year_key =
+               coalesce(
+                 academic_year_key,
+                 ?
+               ),
+             fee_frequency =
+               coalesce(
+                 fee_frequency,
+                 'monthly'
+               ),
+             fee_rule_id =
+               coalesce(
+                 fee_rule_id,
+                 ?
+               ),
+             updated_at =
+               CURRENT_TIMESTAMP
+           where id = ?`,
+        )
+        .bind(
+          classId,
+          academicYear,
+          monthlyRule.id,
+          existingMonthly.id,
+        )
+        .run();
     }
     else {
       const discount =
@@ -756,10 +948,12 @@ async function reconciliationData(
         student,
       ) => {
         const studentInvoices =
-          invoices.filter(
-            (invoice) =>
-              invoice.student_id ===
-              student.id,
+          normaliseFeeInvoices(
+            invoices.filter(
+              (invoice) =>
+                invoice.student_id ===
+                student.id,
+            ),
           );
 
         const monthly =
@@ -881,26 +1075,14 @@ async function reconciliationData(
               0,
             );
 
+        /*
+         * Total outstanding for a reconciliation period is the selected
+         * month's unpaid amount plus genuine earlier arrears. Future
+         * invoices must not inflate the selected month's balance.
+         */
         const totalOutstanding =
-          studentInvoices.reduce(
-            (
-              total,
-              invoice,
-            ) =>
-              total +
-              Math.max(
-                0,
-                Number(
-                  invoice.amount_due_pence ??
-                    0,
-                ) -
-                  Number(
-                    invoice.amount_paid_pence ??
-                      0,
-                  ),
-              ),
-            0,
-          );
+          currentOutstanding +
+          arrears;
 
         const latestPayment =
           payments.find(
@@ -1480,12 +1662,7 @@ export async function POST(
       const invoices =
         await d1()
           .prepare(
-            `select
-               id,
-               amount_due_pence,
-               amount_paid_pence,
-               due_date,
-               description
+            `select *
              from fee_invoices
              where student_id = ?
                and status not in (
@@ -1502,16 +1679,45 @@ export async function POST(
           .bind(
             studentId,
           )
-          .all<{
-            id: string;
-            amount_due_pence: number;
-            amount_paid_pence: number;
-            due_date: string;
-            description: string;
-          }>();
+          .all<InvoiceRow>();
+
+      /*
+       * The same legacy de-duplication used by reconciliation must also
+       * be used when validating and allocating a manual payment.
+       */
+      const payableInvoices =
+        normaliseFeeInvoices(
+          invoices.results,
+        )
+          .filter(
+            (invoice) =>
+              Number(
+                invoice.amount_paid_pence ??
+                  0,
+              ) <
+              Number(
+                invoice.amount_due_pence ??
+                  0,
+              ),
+          )
+          .sort(
+            (
+              left,
+              right,
+            ) =>
+              String(
+                left.due_date ??
+                  "",
+              ).localeCompare(
+                String(
+                  right.due_date ??
+                    "",
+                ),
+              ),
+          );
 
       const totalOutstanding =
-        invoices.results.reduce(
+        payableInvoices.reduce(
           (
             total,
             invoice,
@@ -1552,7 +1758,7 @@ export async function POST(
 
       for (
         const invoice of
-          invoices.results
+          payableInvoices
       ) {
         if (
           remaining <=

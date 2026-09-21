@@ -626,3 +626,213 @@ export async function POST(
     );
   }
 }
+
+export async function DELETE(
+  request: Request,
+) {
+  try {
+    const who =
+      await actor(
+        request,
+        ["admin"],
+      );
+
+    const input =
+      await body(
+        request,
+      );
+
+    const source =
+      String(
+        input.source ??
+          "",
+      );
+
+    const id =
+      String(
+        input.id ??
+          "",
+      );
+
+    if (
+      ![
+        "system",
+        "communication",
+      ].includes(
+        source,
+      ) ||
+      !id
+    ) {
+      throw new ApiError(
+        400,
+        "A valid failed email is required.",
+      );
+    }
+
+    if (
+      source ===
+      "communication"
+    ) {
+      const row =
+        await d1()
+          .prepare(
+            `select
+               cr.id,
+               cr.communication_id,
+               cr.email,
+               cr.email_error,
+               cr.created_at,
+               a.title,
+               a.body
+             from communication_recipients cr
+             join announcements a
+               on a.id =
+                  cr.communication_id
+             where cr.id = ?
+               and cr.email_status =
+                 'failed'
+             limit 1`,
+          )
+          .bind(
+            id,
+          )
+          .first<CommunicationFailure>();
+
+      if (
+        !row
+      ) {
+        throw new ApiError(
+          404,
+          "Failed email was not found.",
+        );
+      }
+
+      const db =
+        d1();
+
+      await db.batch([
+        db
+          .prepare(
+            `update communication_recipients
+             set
+               email_status = 'dismissed'
+             where id = ?
+               and email_status = 'failed'`,
+          )
+          .bind(
+            row.id,
+          ),
+
+        db
+          .prepare(
+            `update announcements
+             set
+               email_failed_count =
+                 (
+                   select count(*)
+                   from communication_recipients
+                   where communication_id = ?
+                     and email_status = 'failed'
+                 ),
+               updated_at =
+                 CURRENT_TIMESTAMP
+             where id = ?`,
+          )
+          .bind(
+            row.communication_id,
+            row.communication_id,
+          ),
+      ]);
+
+      await audit(
+        who,
+        "delete-failed-email",
+        "communication_recipients",
+        row.id,
+        {
+          recipient:
+            row.email,
+          communicationId:
+            row.communication_id,
+          disposition:
+            "dismissed",
+        },
+      );
+    }
+    else {
+      const row =
+        await d1()
+          .prepare(
+            `select
+               id,
+               recipient_email,
+               email_type,
+               related_entity_type,
+               related_entity_id,
+               subject,
+               text_body,
+               html_body,
+               failure_reason,
+               attempt_count,
+               last_attempt_at,
+               context_json
+             from email_delivery_log
+             where id = ?
+               and status =
+                 'failed'
+             limit 1`,
+          )
+          .bind(
+            id,
+          )
+          .first<SystemFailure>();
+
+      if (
+        !row
+      ) {
+        throw new ApiError(
+          404,
+          "Failed email was not found.",
+        );
+      }
+
+      await d1()
+        .prepare(
+          `update email_delivery_log
+           set status = 'dismissed'
+           where id = ?
+             and status = 'failed'`,
+        )
+        .bind(
+          row.id,
+        )
+        .run();
+
+      await audit(
+        who,
+        "delete-failed-email",
+        "email_delivery_log",
+        row.id,
+        {
+          recipient:
+            row.recipient_email,
+          emailType:
+            row.email_type,
+          disposition:
+            "dismissed",
+        },
+      );
+    }
+
+    return json({
+      ok: true,
+      message:
+        "Failed email removed from the retry queue.",
+    });
+  }
+  catch (error) {
+    return fail(
+      error,
+    );
+  }
+}
